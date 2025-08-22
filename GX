@@ -1,27 +1,184 @@
-<!doctype html>
-<html lang="zh-Hant">
+
+<!DOCTYPE html>
+<html lang="zh">
 <head>
-  <meta charset="utf-8">
-  <title>GitHub Pages 測試</title>
+  <meta charset="UTF-8">
+  <title>你能多快斬鬼？</title>
   <style>
     body {
-      font-family: system-ui, "Noto Sans TC", sans-serif;
-      background: #f5f5f5;
+      font-family: "Microsoft JhengHei", sans-serif;
       text-align: center;
-      padding: 80px;
+      background: black;
+      color: white;
     }
-    h1 {
-      font-size: 2.5em;
-      color: #2c7be5;
+    h1 { font-size: 2em; margin: 20px; }
+    #gameArea { margin-top: 30px; }
+    #status { font-size: 1.5em; margin: 20px; }
+    #character {
+      width: 200px;
+      height: 200px;
+      margin: 20px auto;
+      background-size: cover;
+      background-position: center;
+      border-radius: 12px;
     }
-    p {
-      font-size: 1.2em;
-      color: #444;
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      color: white;
+      transition: transform 0.2s;
+    }
+    button:hover { transform: scale(1.1); }
+    #effect {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 999;
+    }
+    /* 🔥 火之呼吸 */
+    .fire {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,100,0,0.8) 0%, transparent 70%);
+      animation: fireAnim 0.6s ease-out forwards;
+    }
+    @keyframes fireAnim {
+      from { transform: scale(0.5); opacity: 1; }
+      to { transform: scale(2.5); opacity: 0; }
+    }
+    /* 🌊 水之呼吸 */
+    .water {
+      width: 220px;
+      height: 220px;
+      border: 5px solid rgba(0,150,255,0.8);
+      border-radius: 50%;
+      animation: waterAnim 0.8s ease-out forwards;
+    }
+    @keyframes waterAnim {
+      from { transform: scale(0.3) rotate(0deg); opacity: 1; }
+      to { transform: scale(2) rotate(720deg); opacity: 0; }
+    }
+    /* ⚡ 雷之呼吸 */
+    .lightning {
+      width: 4px;
+      height: 180px;
+      background: yellow;
+      box-shadow: 0 0 15px yellow, 0 0 30px orange;
+      animation: lightningAnim 0.4s linear forwards;
+    }
+    @keyframes lightningAnim {
+      0% { transform: scaleY(0); opacity: 1; }
+      50% { transform: scaleY(1.5); opacity: 1; }
+      100% { transform: scaleY(0); opacity: 0; }
+    }
+    /* 💥 爆裂特效 */
+    .explosion {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,0,1) 0%, rgba(255,0,0,0.7) 50%, transparent 80%);
+      animation: explosionAnim 0.7s ease-out forwards;
+    }
+    @keyframes explosionAnim {
+      from { transform: scale(0.2); opacity: 1; }
+      to { transform: scale(3); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <h1>Hello GitHub Pages 👋</h1>
-  <p>如果你能看到這個畫面，代表部署成功！</p>
+  <h1>你能多快斬鬼？</h1>
+  <div id="status">準備好了嗎？</div>
+  <div id="character"></div>
+  <button onclick="attack()">斬！</button>
+  <div id="effect"></div>
+
+  <!-- 🎵 音效 -->
+  <audio id="fireSound" src="fire.mp3"></audio>
+  <audio id="waterSound" src="water.mp3"></audio>
+  <audio id="lightningSound" src="lightning.mp3"></audio>
+  <audio id="explosionSound" src="explosion.mp3"></audio>
+  <audio id="muzanSound" src="muzan.mp3"></audio>
+
+  <script>
+    let character = document.getElementById("character");
+    let status = document.getElementById("status");
+    let effect = document.getElementById("effect");
+
+    // 圖片清單
+    const characters = [
+      "human1.png", "human2.png", "human3.png",
+      "oni1.png", "oni2.png", "oni3.png",
+      "muzan1.png", "muzan2.png"
+    ];
+
+    let currentChar = null;
+
+    // 顯示角色
+    function showCharacter() {
+      let choice = characters[Math.floor(Math.random() * characters.length)];
+      currentChar = choice;
+      character.style.backgroundImage = `url(${choice})`;
+      status.textContent = "準備！";
+    }
+
+    // 呼吸法特效
+    function playBreathEffect(type, soundId) {
+      effect.className = '';
+      effect.innerHTML = '';
+      const div = document.createElement('div');
+      div.classList.add(type);
+      effect.appendChild(div);
+
+      // 播放音效
+      let audio = document.getElementById(soundId);
+      audio.currentTime = 0;
+      audio.play();
+
+      setTimeout(() => { effect.innerHTML = ''; }, 1000);
+    }
+
+    function randomBreath() {
+      const effects = [
+        {type: 'fire', sound: 'fireSound'},
+        {type: 'water', sound: 'waterSound'},
+        {type: 'lightning', sound: 'lightningSound'}
+      ];
+      const choice = effects[Math.floor(Math.random() * effects.length)];
+      playBreathEffect(choice.type, choice.sound);
+    }
+
+    function playExplosion() {
+      playBreathEffect('explosion', 'explosionSound');
+    }
+
+    // 斬擊
+    function attack() {
+      if (!currentChar) return;
+      if (currentChar.includes("oni")) {
+        status.textContent = "斬中鬼！";
+        randomBreath();
+      } else if (currentChar.includes("muzan")) {
+        status.textContent = "你擊中無慘！爆裂！！";
+        playExplosion();
+      } else {
+        status.textContent = "犯規！你斬了人類！";
+        character.style.backgroundImage = "url('demon.png')";
+        let muzan = document.getElementById("muzanSound");
+        muzan.currentTime = 0;
+        muzan.play();
+      }
+      setTimeout(showCharacter, 1500);
+    }
+
+    // 開始遊戲
+    showCharacter();
+  </script>
 </body>
 </html>
