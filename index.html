@@ -1,206 +1,383 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>你能多快斬鬼？</title>
-  <style>
-    body {
-      font-family: "Microsoft JhengHei", sans-serif;
-      text-align: center;
-      background: black;
-      color: white;
-    }
-    h1 { font-size: 2em; margin: 20px; }
-    #gameArea { margin-top: 30px; }
-    #status { font-size: 1.5em; margin: 20px; }
-    #character {
-      width: 200px;
-      height: 200px;
-      margin: 20px auto;
-      background-size: cover;
-      background-position: center;
-      border-radius: 12px;
-    }
-    button {
-      padding: 15px 25px;
-      font-size: 18px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      background: linear-gradient(135deg, #ff4e50, #f9d423);
-      color: white;
-      transition: transform 0.2s;
-    }
-    button:hover { transform: scale(1.1); }
-    #effect {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-      z-index: 999;
-    }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>你能多快斬鬼？</title>
+<style>
+  :root{
+    --text:#e9eef6; --muted:#9aa7b2; --primary:#3b82f6; --accent:#8b5cf6;
+    --card:#141823;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:linear-gradient(160deg,#0b0e13,#0f1422);min-height:100dvh;color:var(--text);font-family:system-ui,-apple-system,"Noto Sans TC",Segoe UI,Roboto}
+  .wrap{min-height:100dvh;display:grid;place-items:center;padding:22px}
+  .card{width:min(740px,94vw);background:rgba(20,24,35,.9);backdrop-filter: blur(8px);
+        border:1px solid rgba(255,255,255,.06);border-radius:24px;padding:20px 20px 12px;
+        box-shadow:0 20px 40px rgba(0,0,0,.5)}
+  h1{margin:0 0 8px;font-size:26px;letter-spacing:.3px}
+  p{margin:6px 0;color:var(--muted)}
+  .topbar{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:10px}
+  select{appearance:none;padding:10px 14px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:#1c2130;color:var(--text);cursor:pointer;transition:.2s}
+  select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,.25)}
+  .btn{padding:12px 18px;border:0;border-radius:14px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;
+       font-size:16px;cursor:pointer;transition:transform .06s ease, filter .2s ease; box-shadow:0 10px 20px rgba(59,130,246,.25)}
+  .btn:hover{filter:brightness(1.05)} .btn:active{transform:translateY(1px) scale(.99)}
+  .btn.secondary{background:#263146;border:1px solid rgba(255,255,255,.12)}
+  .btn.danger{background:#b91c1c;border:1px solid rgba(255,255,255,.18)}
 
-    /* 🔥 火之呼吸 */
-    .fire {
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,100,0,0.8) 0%, transparent 70%);
-      animation: fireAnim 1.6s ease-out forwards; /* 延長 */
-    }
-    @keyframes fireAnim {
-      from { transform: scale(0.5); opacity: 1; }
-      to { transform: scale(2.5); opacity: 0; }
-    }
+  /* 遊戲場域 */
+  .arena{margin-top:16px;border-radius:18px;height:340px;display:grid;place-items:center;user-select:none;touch-action:manipulation;position:relative;overflow:hidden}
+  .big{position:relative; z-index:6; font-size:28px;font-weight:800;text-shadow:0 2px 10px rgba(0,0,0,.2)}
 
-    /* 🌊 水之呼吸 */
-    .water {
-      width: 220px;
-      height: 220px;
-      border: 5px solid rgba(0,150,255,0.8);
-      border-radius: 50%;
-      animation: waterAnim 1.8s ease-out forwards; /* 延長 */
-    }
-    @keyframes waterAnim {
-      from { transform: scale(0.3) rotate(0deg); opacity: 1; }
-      to { transform: scale(2) rotate(720deg); opacity: 0; }
-    }
+  /* 視差背景層（紅燈＝街景前進；其他狀態也保留微動感） */
+  .layer{position:absolute; inset:0; background-size:cover; background-position:50% 50%; z-index:1;}
+  .far{ z-index:1; filter:brightness(.7) saturate(.9); }
+  .mid{ z-index:2; filter:brightness(.85) saturate(1); }
+  .near{z-index:3; filter:brightness(1) saturate(1.1) blur(.3px); }
 
-    /* ⚡ 雷之呼吸 */
-    .lightning {
-      width: 4px;
-      height: 180px;
-      background: yellow;
-      box-shadow: 0 0 15px yellow, 0 0 30px orange;
-      animation: lightningAnim 1.4s linear forwards; /* 延長 */
-    }
-    @keyframes lightningAnim {
-      0% { transform: scaleY(0); opacity: 1; }
-      50% { transform: scaleY(1.5); opacity: 1; }
-      100% { transform: scaleY(0); opacity: 0; }
-    }
+  /* 角色層 */
+  .sprite{position:absolute; bottom:10px; left:50%; transform:translateX(-50%); pointer-events:none; z-index:5; transition:opacity .15s}
+  .human, .oni{height:82%; max-height:280px; opacity:0}
+  .arena.yellow .human{opacity:1; animation:float 2.1s ease-in-out infinite}
+  /* ⬇️ 改：鬼放大 2 倍＋新脈動動畫（throb2），避免覆蓋 scale */
+  .arena.ready  .oni  {opacity:1; transform:translateX(-50%) scale(2); animation:throb2 .9s ease-in-out infinite}
 
-    /* 💥 爆裂特效 */
-    .explosion {
-      width: 300px;
-      height: 300px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(255,255,0,1) 0%, rgba(255,0,0,0.7) 50%, transparent 80%);
-      animation: explosionAnim 1.7s ease-out forwards; /* 延長 */
-    }
-    @keyframes explosionAnim {
-      from { transform: scale(0.2); opacity: 1; }
-      to { transform: scale(3); opacity: 0; }
-    }
+  @keyframes float{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}
+  /* ⬇️ 新的鬼動畫（以 scale(2) 為基準跳動） */
+  @keyframes throb2{0%,100%{transform:translateX(-50%) scale(2)}50%{transform:translateX(-50%) scale(2.08)}}
 
-    /* 鬼圖片放大 */
-    .oni { transform: scale(2); }
+  /* 犯規：無慘（隨機2張） */
+  /* ⬇️ 改：放大 3 倍（初始 0.85→2.55；顯示 1→3），放寬最大寬度 */
+  #muzan{ position:fixed; top:50%; left:50%;
+    transform:translate(-50%,-50%) scale(2.55);
+    width:240px; max-width:80vw;
+    opacity:0; pointer-events:none; z-index:99;
+    filter:drop-shadow(0 0 16px rgba(229,57,53,.95)) saturate(1.1);
+    transition:opacity .18s ease, transform .18s ease;}
+  .show-muzan{ opacity:1 !important; animation:shake .3s infinite; transform:translate(-50%,-50%) scale(3); }
+  @keyframes shake{0%,100%{ transform:translate(-50%,-50%) scale(3) rotate(0deg) }25%{ transform:translate(-50%,-50%) scale(3.02) rotate(8deg)}50%{ transform:translate(-50%,-50%) scale(3) rotate(-8deg)}75%{ transform:translate(-50%,-50%) scale(3.02) rotate(6deg)}}
 
-    /* 無慘圖片更大 */
-    .muzan { transform: scale(3); }
+  /* 成功：呼吸法特效（純程式，無音效） */
+  #breathFX{ position:absolute; inset:0; pointer-events:none; z-index:4; }
+  .fxText{
+    position:absolute; left:50%; top:22%; transform:translate(-50%,-50%) scale(.9);
+    font-weight:900; font-size:36px; color:#e3f8ff; letter-spacing:2px;
+    text-shadow:0 4px 30px rgba(59,130,246,.6), 0 0 14px rgba(139,92,246,.6);
+    opacity:0; animation:fxPop 1900ms ease forwards; z-index:7; /* ⬅️ 0.9s → 1.9s */
+  }
+  @keyframes fxPop{ 0%{opacity:0; transform:translate(-50%,-50%) scale(.6) rotate(-8deg)}
+                    50%{opacity:1; transform:translate(-50%,-50%) scale(1.05) rotate(2deg)}
+                    100%{opacity:0; transform:translate(-50%,-50%) scale(1)} }
 
-    /* 街道動畫 */
-    .street {
-      background: url("street.png") repeat-x center;
-      animation: streetMove 1s linear infinite; /* 提速5倍 */
-    }
-    @keyframes streetMove {
-      from { background-position: 0 0; }
-      to { background-position: -500px 0; }
-    }
-  </style>
+  .row{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0 6px}
+  .stat{flex:1;min-width:160px;background:#1b2030;border:1px solid rgba(255,255,255,.06);
+        border-radius:14px;padding:10px 12px}
+  .label{font-size:12px;color:#a7b1bd;margin-bottom:4px}
+  ol{margin:6px 0 0 20px;padding:0}
+  .muted{color:var(--muted)}
+  .footer{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+</style>
 </head>
 <body>
-  <h1>你能多快斬鬼？</h1>
-  <div id="status">準備好了嗎？</div>
-  <div id="character"></div>
-  <button onclick="attack()">斬！</button>
-  <div id="effect"></div>
 
-  <script>
-    let character = document.getElementById("character");
-    let status = document.getElementById("status");
-    let effect = document.getElementById("effect");
+<!-- 犯規顯示：無慘（請上傳 muzan1.png / muzan2.png） -->
+<img id="muzan" src="muzan1.png" alt="犯規！無慘降臨"/>
 
-    // 隨機角色
-    const humans = ["human1.png", "human2.png", "human3.png"];
-    const onis = ["oni1.png", "oni2.png", "oni3.png"];
-    const muzans = ["muzan1.png", "muzan2.png"];
+<div class="wrap">
+  <div class="card">
+    <h1>你能多快斬鬼？</h1>
+    <p>規則：等到<strong>綠燈＝鬼</strong>出現才可以按。紅燈是街道前進、黃燈有人類（不能按）。</p>
 
-    let currentChar = null;
-    let mode = null; // street / human / oni / muzan
+    <div class="topbar">
+      <span class="muted">模式</span>
+      <select id="mode">
+        <option value="normal">一般（1.0 ~ 2.5 秒）</option>
+        <option value="focus">專注（2.0 ~ 5.0 秒）</option>
+        <option value="flash">閃電（0.5 ~ 1.5 秒）</option>
+        <option value="challenge">挑戰級（可能先亮黃燈）</option>
+      </select>
+      <button id="startBtn" class="btn">開始</button>
+      <span id="hintSub" class="muted"></span>
+    </div>
 
-    function showCharacter() {
-      let r = Math.random();
-      if (r < 0.3) {
-        // 街道
-        currentChar = "street.png";
-        mode = "street";
-        character.className = "street";
-        character.style.backgroundImage = "url('street.png')";
-        status.textContent = "前進中...";
-      } else if (r < 0.6) {
-        // 人類
-        currentChar = humans[Math.floor(Math.random()*humans.length)];
-        mode = "human";
-        character.className = "";
-        character.style.backgroundImage = `url(${currentChar})`;
-        status.textContent = "是人！不要斬！";
-      } else if (r < 0.9) {
-        // 鬼
-        currentChar = onis[Math.floor(Math.random()*onis.length)];
-        mode = "oni";
-        character.className = "oni";
-        character.style.backgroundImage = `url(${currentChar})`;
-        status.textContent = "鬼出現了！";
-      } else {
-        // 無慘
-        currentChar = muzans[Math.floor(Math.random()*muzans.length)];
-        mode = "muzan";
-        character.className = "muzan";
-        character.style.backgroundImage = `url(${currentChar})`;
-        status.textContent = "小心！無慘現身！";
+    <div id="arena" class="arena idle">
+      <!-- 視差背景層 -->
+      <div class="layer far" id="bgFar"></div>
+      <div class="layer mid" id="bgMid"></div>
+      <div class="layer near" id="bgNear"></div>
+
+      <!-- 角色 -->
+      <img id="human" class="sprite human" src="human1.png" alt="人類">
+      <img id="oni" class="sprite oni" src="oni1.png" alt="鬼">
+
+      <!-- 成功特效 -->
+      <canvas id="breathFX"></canvas>
+
+      <div class="big" id="hint">按開始</div>
+    </div>
+
+    <div class="row">
+      <div class="stat"><div class="label">本次成績</div><div id="last">—</div></div>
+      <div class="stat"><div class="label">最佳成績</div><div id="best">—</div></div>
+      <div class="stat"><div class="label">遊戲次數</div><div id="plays">0</div></div>
+      <div class="stat" style="flex:1.4">
+        <div class="label">Top 5（越低越好）</div><ol id="top5"></ol>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="muted">犯規會出現無慘；成功會隨機觸發「呼吸法」特效。</div>
+      <div class="btnrow">
+        <button id="shareBtn" class="btn secondary">分享圖（9:16）</button>
+        <button id="resetBtn" class="btn danger">清空紀錄（此模式）</button>
+        <span class="muted">v3.3.1</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ===== DOM =====
+  const arena = document.getElementById('arena');
+  const hint = document.getElementById('hint');
+  const hintSub = document.getElementById('hintSub');
+  const startBtn = document.getElementById('startBtn');
+  const modeSel = document.getElementById('mode');
+  const lastEl = document.getElementById('last');
+  const bestEl = document.getElementById('best');
+  const playsEl = document.getElementById('plays');
+  const top5El = document.getElementById('top5');
+  const shareBtn = document.getElementById('shareBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const muzan = document.getElementById('muzan');
+  const human = document.getElementById('human');
+  const oni = document.getElementById('oni');
+  const bgFar = document.getElementById('bgFar');
+  const bgMid = document.getElementById('bgMid');
+  const bgNear = document.getElementById('bgNear');
+  const fxCanvas = document.getElementById('breathFX');
+  const fx = fxCanvas.getContext('2d');
+
+  // ===== 素材（請放和 index.html 同層） =====
+  const muzanImgs = ['muzan1.png','muzan2.png'];
+  const humanImgs = ['human1.png','human2.png','human3.png'];
+  const oniImgs   = ['oni1.png','oni2.png','oni3.png'];
+  const bgLayers  = { far:'bg_far.jpg', mid:'bg_mid.png', near:'bg_near.png', fallback:'bg_street.jpg' };
+
+  // ===== 視差（紅燈＝等待時最明顯） =====
+  let rafId=null, runParallax=false, px=0, mx=0, nx=0;
+  function startParallax(){
+    if(runParallax) return;
+    runParallax=true;
+    const loop = (t)=>{
+      if(!runParallax){ rafId=null; return; }
+      /* ⬇️ 改：速度 ×5（原 0.25 / 0.7 / 1.4） */
+      px -= 1.25; mx -= 3.5; nx -= 7.0;
+      const s = 1 + Math.sin(t/1200)*0.012;
+      bgFar.style.backgroundPosition = `${px}px 50%`;
+      bgMid.style.backgroundPosition = `${mx}px 50%`;
+      bgNear.style.backgroundPosition = `${nx}px 50%`;
+      bgFar.style.transform = `scale(${s})`;
+      bgMid.style.transform = `scale(${s*1.01})`;
+      bgNear.style.transform = `scale(${s*1.02})`;
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+  }
+  function stopParallax(){
+    runParallax=false; if(rafId) cancelAnimationFrame(rafId); rafId=null;
+    bgFar.style.transform = bgMid.style.transform = bgNear.style.transform = 'scale(1)';
+  }
+  function loadBackgrounds(){
+    const useFallback = (el)=>{ el.style.backgroundImage = `url('${bgLayers.fallback}')`; };
+    [bgFar,bgMid,bgNear].forEach(useFallback);
+    setBgIfExists(bgFar, bgLayers.far);
+    setBgIfExists(bgMid, bgLayers.mid);
+    setBgIfExists(bgNear, bgLayers.near);
+  }
+  function setBgIfExists(el, src){
+    const img=new Image(); img.onload=()=>el.style.backgroundImage=`url('${src}')`; img.src=src;
+  }
+  loadBackgrounds();
+
+  // ===== 分模式統計 =====
+  function keyPrefix(){ return 'slay_'+modeSel.value; }
+  function kBest(){ return keyPrefix()+'_best_ms'; }
+  function kPlays(){ return keyPrefix()+'_plays'; }
+  function kTop5(){ return keyPrefix()+'_top5_ms'; }
+  let best=null, plays=0, top5=[];
+  function loadStats(){ best=Number(localStorage.getItem(kBest())||0)||null; plays=Number(localStorage.getItem(kPlays())||0); try{top5=JSON.parse(localStorage.getItem(kTop5())||'[]')}catch{top5=[]} }
+  function saveStats(){ localStorage.setItem(kPlays(), String(plays)); if(best!==null) localStorage.setItem(kBest(), String(best)); localStorage.setItem(kTop5(), JSON.stringify(top5)); }
+  loadStats();
+
+  // ===== UI =====
+  function renderHUD(last=null){
+    bestEl.textContent = best ? (best.toFixed(0)+' ms') : '—';
+    playsEl.textContent = String(plays);
+    if(last!==null) lastEl.textContent = last+' ms';
+    top5El.innerHTML = '';
+    (top5.length?top5.slice(0,5):['—']).forEach((v,i)=>{
+      const li=document.createElement('li'); li.textContent = typeof v==='number' ? v.toFixed(0)+' ms' : v;
+      if(i===0) li.style.color='#7ee787'; top5El.appendChild(li);
+    });
+    const m = modeSel.value;
+    hintSub.textContent =
+      m==='normal' ? '等待：1.0~2.5s（紅燈＝街景）' :
+      m==='focus'  ? '等待：2.0~5.0s' :
+      m==='flash'  ? '等待：0.5~1.5s' :
+                     '挑戰級：可能先黃燈（人類），再轉綠燈（鬼）';
+  }
+  renderHUD();
+
+  // ===== 狀態機：idle / wait(紅) / yellow(黃) / ready(綠) =====
+  let state='idle', timerA=null, timerB=null, startTime=0;
+  function setState(s){
+    state=s;
+    arena.classList.remove('idle','wait','yellow','ready');
+    arena.classList.add(s);
+    if(s==='idle'){ hint.textContent='按開始'; stopParallax(); human.style.opacity=0; oni.style.opacity=0; }
+    if(s==='wait'){ hint.textContent='街景前進中…（不能按）'; startParallax(); human.style.opacity=0; oni.style.opacity=0; }
+    if(s==='yellow'){ hint.textContent='人類出現！還不能按！'; startParallax(); human.style.opacity=1; oni.style.opacity=0; }
+    if(s==='ready'){ hint.textContent='鬼來了！出手！'; startParallax(); human.style.opacity=0; oni.style.opacity=1; }
+  }
+  function rndDelay(){
+    switch(modeSel.value){
+      case 'focus': return 2000 + Math.random()*3000;
+      case 'flash': return 500  + Math.random()*1000;
+      case 'challenge': return 1000 + Math.random()*2000;
+      default: return 1000 + Math.random()*1500;
+    }
+  }
+  function pickOne(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function pickRandomSprites(){ human.src = pickOne(humanImgs); oni.src = pickOne(oniImgs); }
+  function pickRandomMuzan(){ muzan.src = pickOne(muzanImgs); }
+
+  function startGame(){
+    clearTimeout(timerA); clearTimeout(timerB);
+    loadStats(); renderHUD();
+    pickRandomSprites();
+    setState('wait');
+    const delay = rndDelay();
+    timerA = setTimeout(()=>{
+      if(modeSel.value==='challenge' && Math.random()<0.55){
+        setState('yellow');
+        timerB = setTimeout(()=>{
+          setState('ready'); startTime=performance.now();
+        }, 300+Math.random()*500);
+      }else{
+        setState('ready'); startTime=performance.now();
       }
-    }
+    }, delay);
+  }
 
-    function playBreathEffect(type) {
-      effect.className = '';
-      effect.innerHTML = '';
-      const div = document.createElement('div');
-      div.classList.add(type);
-      effect.appendChild(div);
-      setTimeout(() => { effect.innerHTML = ''; }, 1800);
-    }
+  function foul(msg){
+    clearTimeout(timerA); clearTimeout(timerB);
+    setState('idle');
+    hint.textContent = msg + '！無慘現身…';
+    pickRandomMuzan();
+    muzan.classList.add('show-muzan');
+    setTimeout(()=>muzan.classList.remove('show-muzan'), 1500);
+  }
 
-    function randomBreath() {
-      const effects = ['fire', 'water', 'lightning'];
-      const choice = effects[Math.floor(Math.random()*effects.length)];
-      playBreathEffect(choice);
-    }
+  function success(){
+    const ms = Math.max(1, Math.round(performance.now()-startTime));
+    plays++; if(!best || ms<best) best=ms;
+    top5.push(ms); top5.sort((a,b)=>a-b); if(top5.length>5) top5=top5.slice(0,5);
+    saveStats(); renderHUD(ms);
+    setState('idle'); hint.textContent = `斬！你的成績：${ms} ms`;
+    runBreathFX(); // 呼吸法特效
+  }
 
-    function playExplosion() {
-      playBreathEffect('explosion');
-    }
+  // 點擊邏輯：等於紅燈/黃燈按就是犯規；綠燈按是成功
+  function onTap(){
+    if(state==='wait')   return foul('太早了');
+    if(state==='yellow') return foul('人類無辜');
+    if(state!=='ready')  return;
+    success();
+  }
 
-    function attack() {
-      if (!mode) return;
-      if (mode === "oni") {
-        status.textContent = "斬中鬼！";
-        randomBreath();
-      } else if (mode === "muzan") {
-        status.textContent = "你擊中無慘！爆裂！！";
-        playExplosion();
-      } else {
-        status.textContent = "犯規！你不能斬！";
-        character.style.backgroundImage = "url('muzan1.png')";
-        character.className = "muzan";
-      }
-      setTimeout(showCharacter, 2000);
-    }
+  // ===== 呼吸法特效（水/炎/雷 隨機；純畫布＋文字） =====
+  const fxNames = ['水之呼吸','炎之呼吸','雷之呼吸'];
+  function runBreathFX(){
+    fxCanvas.width = arena.clientWidth; fxCanvas.height = arena.clientHeight;
+    fx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+    const text = document.createElement('div');
+    text.className='fxText';
+    text.textContent = fxNames[Math.floor(Math.random()*fxNames.length)];
+    arena.appendChild(text);
+    setTimeout(()=>text.remove(), 1900); /* ⬅️ 0.95s → 1.9s */
 
-    // 開始
-    showCharacter();
-  </script>
+    const N = 60, parts=[];
+    for(let i=0;i<N;i++){
+      parts.push({x:fxCanvas.width/2, y:fxCanvas.height*0.6,
+                  vx:(Math.random()*2-1)*3.4, vy:(Math.random()*-2-1)*3.2,
+                  life: 700+Math.random()*500 });
+    }
+    const t0 = performance.now();
+    (function tick(){
+      const t = performance.now() - t0;
+      fx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+      fx.globalCompositeOperation='lighter';
+      parts.forEach(p=>{
+        const k = t/p.life; if(k>1) return;
+        const x = p.x + p.vx*t*0.06;
+        const y = p.y + p.vy*t*0.06 + 0.12*t*0.06*t*0.06;
+        const r = 3 + (1-k)*7, a = (1-k);
+        const grad = fx.createRadialGradient(x,y,0,x,y,r*2);
+        grad.addColorStop(0, `rgba(59,130,246,${0.85*a})`);
+        grad.addColorStop(1, `rgba(139,92,246,0)`);
+        fx.fillStyle = grad; fx.beginPath(); fx.arc(x,y,r,0,Math.PI*2); fx.fill();
+      });
+      if(t<2200) requestAnimationFrame(tick);  /* ⬅️ 1.2s → 2.2s */
+      else fx.clearRect(0,0,fxCanvas.width,fxCanvas.height);
+    })();
+  }
+
+  // ===== 分享圖（Top3；9:16） =====
+  function pad(n){return n<10?'0'+n:''+n;}
+  function today(){const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+  function modeName(){return modeSel.value==='normal'?'一般':modeSel.value==='focus'?'專注':modeSel.value==='flash'?'閃電':'挑戰級';}
+  function shareCard(){
+    const W=1080,H=1920; const c=document.createElement('canvas'); c.width=W;c.height=H; const g=c.getContext('2d');
+    const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'#0f172a'); gr.addColorStop(1,'#1e293b'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+    g.fillStyle='rgba(59,130,246,.18)'; g.beginPath(); g.arc(W-140,200,180,0,Math.PI*2); g.fill();
+    g.fillStyle='rgba(139,92,246,.22)'; g.beginPath(); g.arc(180,H-180,220,0,Math.PI*2); g.fill();
+    g.fillStyle='#e5edff'; g.font='900 84px system-ui,"Noto Sans TC"'; g.fillText('你能多快斬鬼？', 72, 160);
+    g.fillStyle='#a7b1bd'; g.font='500 34px system-ui,"Noto Sans TC"'; g.fillText(`模式：${modeName()}｜日期：${today()}`,72,212);
+    const x=64,y=280,w=W-128,h=H-400; g.fillStyle='rgba(30,41,59,.92)'; roundRect(g,x,y,w,h,32,true,false);
+    g.fillStyle='#9fbaff'; g.font='600 36px system-ui,"Noto Sans TC"'; g.fillText('最佳成績',x+40,y+80);
+    g.fillStyle='#7ee787'; g.font='900 120px system-ui,"Noto Sans TC"'; g.fillText(best?`${best.toFixed(0)} ms`:'—',x+40,y+190);
+    g.fillStyle='#a7b1bd'; g.font='600 36px system-ui,"Noto Sans TC"'; g.fillText('Top 3（越低越好）',x+40,y+270);
+    const list=top5.length?top5.slice(0,3):['—']; const baseY=y+340;
+    list.forEach((v,i)=>{g.fillStyle='#9fbaff'; g.font='700 56px system-ui,"Noto Sans TC"'; g.fillText(`${i+1}. `,x+40,baseY+i*100);
+      g.fillStyle=i===0?'#7ee787':'#e5edff'; g.font='800 64px system-ui,"Noto Sans TC"'; g.fillText(typeof v==='number'?`${v.toFixed(0)} ms`:v,x+120,baseY+i*100);});
+    g.fillStyle='#93c5fd'; g.font='600 28px system-ui,"Noto Sans TC"'; g.fillText('Made with Hyper-Response', W-540, H-60);
+    const a=document.createElement('a'); a.href=c.toDataURL('image/png'); a.download=`slay-top3-${today()}.png`; a.click();
+  }
+  function roundRect(ctx,x,y,w,h,r,fill,stroke){
+    if(typeof r==='number') r={tl:r,tr:r,br:r,bl:r};
+    ctx.beginPath(); ctx.moveTo(x+r.tl,y); ctx.lineTo(x+w-r.tr,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r.tr);
+    ctx.lineTo(x+w,y+h-r.br); ctx.quadraticCurveTo(x+w,y+h,x+w-r.br,y+h); ctx.lineTo(x+r.bl,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r.bl); ctx.lineTo(x,y+r.tl); ctx.quadraticCurveTo(x,y,x+r.tl,y); ctx.closePath();
+  }
+
+  // ===== 綁定 =====
+  startBtn.addEventListener('click', startGame);
+  modeSel.addEventListener('change', ()=>{loadStats(); renderHUD();});
+  arena.addEventListener('click', onTap);
+  arena.addEventListener('touchstart', (e)=>{e.preventDefault(); onTap();}, {passive:false});
+  document.addEventListener('keydown', (e)=>{ if(e.code==='Space'){ e.preventDefault(); onTap(); }});
+  shareBtn.addEventListener('click', shareCard);
+  resetBtn.addEventListener('click', ()=>{
+    if(!confirm('只清除此模式的紀錄（最佳、Top5、次數）？')) return;
+    localStorage.removeItem(kBest()); localStorage.removeItem(kPlays()); localStorage.removeItem(kTop5());
+    loadStats(); lastEl.textContent='—'; renderHUD(); alert('已清除此模式的紀錄！');
+  });
+
+})();
+</script>
 </body>
 </html>
