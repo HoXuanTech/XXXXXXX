@@ -5,167 +5,179 @@
   <title>你能多快斬鬼？</title>
   <style>
     body {
-      margin: 0;
-      font-family: "Noto Sans TC", sans-serif;
+      font-family: "Microsoft JhengHei", sans-serif;
+      text-align: center;
       background: black;
       color: white;
-      text-align: center;
-      overflow: hidden;
     }
-    h1 {
-      margin: 20px 0;
-      font-size: 2em;
-      color: #ff4444;
-      text-shadow: 2px 2px 5px black;
-    }
-
-    /* 背景跑動效果 */
-    .background {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      background: url("street-bg.jpg") repeat-x;
-      background-size: cover;
-      animation: moveBg 5s linear infinite;
-      z-index: -1;
-    }
-    @keyframes moveBg {
-      from { background-position: 0 0; }
-      to { background-position: -1000px 0; }
-    }
-
-    #game {
-      margin-top: 50px;
-    }
-
+    h1 { font-size: 2em; margin: 20px; }
+    #gameArea { margin-top: 30px; }
+    #status { font-size: 1.5em; margin: 20px; }
     #character {
-      width: 250px;
-      height: 250px;
+      width: 200px;
+      height: 200px;
       margin: 20px auto;
-      display: none;
+      background-size: cover;
+      background-position: center;
+      border-radius: 12px;
     }
-
-    #character img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      animation: appear 0.5s ease-out;
+    button {
+      padding: 15px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      background: linear-gradient(135deg, #ff4e50, #f9d423);
+      color: white;
+      transition: transform 0.2s;
     }
-
-    @keyframes appear {
-      from { transform: scale(0); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-
+    button:hover { transform: scale(1.1); }
     #effect {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      display: none;
+      pointer-events: none;
+      z-index: 999;
     }
-    #effect img {
+    /* 🔥 火之呼吸 */
+    .fire {
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,100,0,0.8) 0%, transparent 70%);
+      animation: fireAnim 0.6s ease-out forwards;
+    }
+    @keyframes fireAnim {
+      from { transform: scale(0.5); opacity: 1; }
+      to { transform: scale(2.5); opacity: 0; }
+    }
+    /* 🌊 水之呼吸 */
+    .water {
+      width: 220px;
+      height: 220px;
+      border: 5px solid rgba(0,150,255,0.8);
+      border-radius: 50%;
+      animation: waterAnim 0.8s ease-out forwards;
+    }
+    @keyframes waterAnim {
+      from { transform: scale(0.3) rotate(0deg); opacity: 1; }
+      to { transform: scale(2) rotate(720deg); opacity: 0; }
+    }
+    /* ⚡ 雷之呼吸 */
+    .lightning {
+      width: 4px;
+      height: 180px;
+      background: yellow;
+      box-shadow: 0 0 15px yellow, 0 0 30px orange;
+      animation: lightningAnim 0.4s linear forwards;
+    }
+    @keyframes lightningAnim {
+      0% { transform: scaleY(0); opacity: 1; }
+      50% { transform: scaleY(1.5); opacity: 1; }
+      100% { transform: scaleY(0); opacity: 0; }
+    }
+    /* 💥 爆裂特效 */
+    .explosion {
       width: 300px;
-      height: auto;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,0,1) 0%, rgba(255,0,0,0.7) 50%, transparent 80%);
+      animation: explosionAnim 0.7s ease-out forwards;
     }
-
-    #message {
-      font-size: 1.5em;
-      margin-top: 15px;
-    }
-
-    button {
-      margin-top: 20px;
-      padding: 12px 24px;
-      font-size: 1.2em;
-      border: none;
-      border-radius: 8px;
-      background: #ff4444;
-      color: white;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    button:hover {
-      transform: scale(1.05);
-      background: #ff2222;
+    @keyframes explosionAnim {
+      from { transform: scale(0.2); opacity: 1; }
+      to { transform: scale(3); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <div class="background"></div>
   <h1>你能多快斬鬼？</h1>
+  <div id="status">準備好了嗎？</div>
+  <div id="character"></div>
+  <button onclick="attack()">斬！</button>
+  <div id="effect"></div>
 
-  <div id="game">
-    <button onclick="startGame()">開始遊戲</button>
-    <div id="character"><img id="charImg" src=""></div>
-    <div id="effect"><img id="effectImg" src=""></div>
-    <div id="message"></div>
-  </div>
+  <!-- 🎵 音效 -->
+  <audio id="fireSound" src="fire.mp3"></audio>
+  <audio id="waterSound" src="water.mp3"></audio>
+  <audio id="lightningSound" src="lightning.mp3"></audio>
+  <audio id="explosionSound" src="explosion.mp3"></audio>
+  <audio id="muzanSound" src="muzan.mp3"></audio>
 
   <script>
-    const humans = ["human1.png", "human2.png", "human3.png"];
-    const onis = ["oni1.png", "oni2.png", "oni3.png"];
-    const muzans = ["muzan1.png", "muzan2.png"];
-    const breaths = ["breath1.gif", "breath2.gif", "breath3.gif"];
+    let character = document.getElementById("character");
+    let status = document.getElementById("status");
+    let effect = document.getElementById("effect");
+
+    // 圖片清單
+    const characters = [
+      "human1.png", "human2.png", "human3.png",
+      "oni1.png", "oni2.png", "oni3.png",
+      "muzan1.png", "muzan2.png"
+    ];
 
     let currentChar = null;
-    let muzanClicks = 0;
 
-    function startGame() {
-      document.getElementById("message").innerText = "準備中...";
-      setTimeout(showCharacter, Math.random() * 2000 + 1000);
-    }
-
+    // 顯示角色
     function showCharacter() {
-      const rand = Math.random();
-      let charFile;
-      if (rand < 0.5) { // 50% 鬼
-        currentChar = "oni";
-        charFile = onis[Math.floor(Math.random() * onis.length)];
-      } else if (rand < 0.8) { // 30% 人類
-        currentChar = "human";
-        charFile = humans[Math.floor(Math.random() * humans.length)];
-      } else { // 20% 無慘
-        currentChar = "muzan";
-        muzanClicks = 0;
-        charFile = muzans[Math.floor(Math.random() * muzans.length)];
+      let choice = characters[Math.floor(Math.random() * characters.length)];
+      currentChar = choice;
+      character.style.backgroundImage = `url(${choice})`;
+      status.textContent = "準備！";
+    }
+
+    // 呼吸法特效
+    function playBreathEffect(type, soundId) {
+      effect.className = '';
+      effect.innerHTML = '';
+      const div = document.createElement('div');
+      div.classList.add(type);
+      effect.appendChild(div);
+
+      // 播放音效
+      let audio = document.getElementById(soundId);
+      audio.currentTime = 0;
+      audio.play();
+
+      setTimeout(() => { effect.innerHTML = ''; }, 1000);
+    }
+
+    function randomBreath() {
+      const effects = [
+        {type: 'fire', sound: 'fireSound'},
+        {type: 'water', sound: 'waterSound'},
+        {type: 'lightning', sound: 'lightningSound'}
+      ];
+      const choice = effects[Math.floor(Math.random() * effects.length)];
+      playBreathEffect(choice.type, choice.sound);
+    }
+
+    function playExplosion() {
+      playBreathEffect('explosion', 'explosionSound');
+    }
+
+    // 斬擊
+    function attack() {
+      if (!currentChar) return;
+      if (currentChar.includes("oni")) {
+        status.textContent = "斬中鬼！";
+        randomBreath();
+      } else if (currentChar.includes("muzan")) {
+        status.textContent = "你擊中無慘！爆裂！！";
+        playExplosion();
+      } else {
+        status.textContent = "犯規！你斬了人類！";
+        character.style.backgroundImage = "url('demon.png')";
+        let muzan = document.getElementById("muzanSound");
+        muzan.currentTime = 0;
+        muzan.play();
       }
-      document.getElementById("charImg").src = charFile;
-      document.getElementById("character").style.display = "block";
-      document.getElementById("effect").style.display = "none";
-
-      document.getElementById("charImg").onclick = handleClick;
+      setTimeout(showCharacter, 1500);
     }
 
-    function handleClick() {
-      if (currentChar === "oni") {
-        showEffect(breaths[Math.floor(Math.random() * breaths.length)]);
-        document.getElementById("message").innerText = "斬鬼成功 ⚔️！";
-      } else if (currentChar === "human") {
-        showEffect("muzan1.png");
-        document.getElementById("message").innerText = "誤傷人類！無慘震怒 👹！";
-      } else if (currentChar === "muzan") {
-        muzanClicks++;
-        if (muzanClicks >= 2) {
-          showEffect("explosion.gif");
-          document.getElementById("message").innerText = "擊敗無慘！🔥";
-        } else {
-          document.getElementById("message").innerText = "無慘太強了！再斬一次！";
-          return; // 等第二次點擊
-        }
-      }
-      // 隱藏角色，繼續下一回合
-      setTimeout(startGame, 1500);
-      document.getElementById("character").style.display = "none";
-    }
-
-    function showEffect(imgFile) {
-      const effect = document.getElementById("effect");
-      document.getElementById("effectImg").src = imgFile;
-      effect.style.display = "block";
-      setTimeout(() => { effect.style.display = "none"; }, 1200);
-    }
+    // 開始遊戲
+    showCharacter();
   </script>
 </body>
 </html>
