@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>你能多快斬鬼？</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Noto Sans TC", sans-serif;
+      background: black;
+      color: white;
+      text-align: center;
+      overflow: hidden;
+    }
+    h1 {
+      margin: 20px 0;
+      font-size: 2em;
+      color: #ff4444;
+      text-shadow: 2px 2px 5px black;
+    }
+
+    /* 背景跑動效果 */
+    .background {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      background: url("street-bg.jpg") repeat-x;
+      background-size: cover;
+      animation: moveBg 5s linear infinite;
+      z-index: -1;
+    }
+    @keyframes moveBg {
+      from { background-position: 0 0; }
+      to { background-position: -1000px 0; }
+    }
+
+    #game {
+      margin-top: 50px;
+    }
+
+    #character {
+      width: 250px;
+      height: 250px;
+      margin: 20px auto;
+      display: none;
+    }
+
+    #character img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      animation: appear 0.5s ease-out;
+    }
+
+    @keyframes appear {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    #effect {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+    }
+    #effect img {
+      width: 300px;
+      height: auto;
+    }
+
+    #message {
+      font-size: 1.5em;
+      margin-top: 15px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 12px 24px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 8px;
+      background: #ff4444;
+      color: white;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: scale(1.05);
+      background: #ff2222;
+    }
+  </style>
+</head>
+<body>
+  <div class="background"></div>
+  <h1>你能多快斬鬼？</h1>
+
+  <div id="game">
+    <button onclick="startGame()">開始遊戲</button>
+    <div id="character"><img id="charImg" src=""></div>
+    <div id="effect"><img id="effectImg" src=""></div>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    const humans = ["human1.png", "human2.png", "human3.png"];
+    const onis = ["oni1.png", "oni2.png", "oni3.png"];
+    const muzans = ["muzan1.png", "muzan2.png"];
+    const breaths = ["breath1.gif", "breath2.gif", "breath3.gif"];
+
+    let currentChar = null;
+    let muzanClicks = 0;
+
+    function startGame() {
+      document.getElementById("message").innerText = "準備中...";
+      setTimeout(showCharacter, Math.random() * 2000 + 1000);
+    }
+
+    function showCharacter() {
+      const rand = Math.random();
+      let charFile;
+      if (rand < 0.5) { // 50% 鬼
+        currentChar = "oni";
+        charFile = onis[Math.floor(Math.random() * onis.length)];
+      } else if (rand < 0.8) { // 30% 人類
+        currentChar = "human";
+        charFile = humans[Math.floor(Math.random() * humans.length)];
+      } else { // 20% 無慘
+        currentChar = "muzan";
+        muzanClicks = 0;
+        charFile = muzans[Math.floor(Math.random() * muzans.length)];
+      }
+      document.getElementById("charImg").src = charFile;
+      document.getElementById("character").style.display = "block";
+      document.getElementById("effect").style.display = "none";
+
+      document.getElementById("charImg").onclick = handleClick;
+    }
+
+    function handleClick() {
+      if (currentChar === "oni") {
+        showEffect(breaths[Math.floor(Math.random() * breaths.length)]);
+        document.getElementById("message").innerText = "斬鬼成功 ⚔️！";
+      } else if (currentChar === "human") {
+        showEffect("muzan1.png");
+        document.getElementById("message").innerText = "誤傷人類！無慘震怒 👹！";
+      } else if (currentChar === "muzan") {
+        muzanClicks++;
+        if (muzanClicks >= 2) {
+          showEffect("explosion.gif");
+          document.getElementById("message").innerText = "擊敗無慘！🔥";
+        } else {
+          document.getElementById("message").innerText = "無慘太強了！再斬一次！";
+          return; // 等第二次點擊
+        }
+      }
+      // 隱藏角色，繼續下一回合
+      setTimeout(startGame, 1500);
+      document.getElementById("character").style.display = "none";
+    }
+
+    function showEffect(imgFile) {
+      const effect = document.getElementById("effect");
+      document.getElementById("effectImg").src = imgFile;
+      effect.style.display = "block";
+      setTimeout(() => { effect.style.display = "none"; }, 1200);
+    }
+  </script>
+</body>
+</html>
